@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: traffic_staging
+    description: "Staging model for traffic data."
+    schema: "ADHOC"
+    columns:
+      - name: DATE
+        description: "The date and time of the traffic data entry."
+        tests:
+          - not_null
+      - name: latitude
+        description: "Latitude of the traffic location."
+        tests:
+          - not_null
+      - name: longitude
+        description: "Longitude of the traffic location."
+        tests:
+          - not_null
+
+  - name: traffic_calculations
+    description: "Calculations for traffic data including speed ratios."
+    schema: "DBT_TRANSFORMED"
+    columns:
+      - name: speed_ratio
+        description: "Ratio of current speed to free speed."
+        tests:
+          - not_null
+      - name: normalized_speed
+        description: "Normalized free speed across different segments."
+        tests:
+          - not_null

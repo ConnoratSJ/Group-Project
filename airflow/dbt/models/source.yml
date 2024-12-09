@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: raw_data_schema
+    database: PROJECT_DB
+    schema: RAW_DATA_SCHEMA
+    tables:
+      - name: TRAFFIC_DATA
+        description: "Raw traffic data collected from API."
