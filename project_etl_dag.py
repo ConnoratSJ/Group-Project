@@ -33,10 +33,9 @@ def return_snowflake_conn():
 @task
 def extract(start, end, zoom, density):# -> pd.DataFrame:
   data = { 'datetime':[], 'lat':[], 'long':[], 'current_speed': [], 'free_speed': []}#, 'speed_ratio': [], 'normalized_speed': []}#these are the parameters I pull from the api
-  #min_speed = 200#this is used to find the minimum speed for normalization purposes
+  #min_speed = 200#this is used to find the minimum speed for normalization purposes, not used in historical data until elt because it needs to be based off the minimum speed of all data, but can be uncommented for use in live.
   date = datetime.now()
   api_keys = ['HU6cPuHIPouf1SEjtey3rnu1Xqd5AF6g', 'VvnPFwG3QnKuuZIG0HbAwAbfXj83ERIu', 'OuhItgHXxxnuK9A3hcOmR3pKNK2zp1GG', '033lGDhgO2lgGnVuRAtwa4Z7GeX99USv', 'driiBrint2vBw6LB1dILDuSyGFnuUbgl']
-  #api_keys = ['HU6cPuHIPouf1SEjtey3rnu1Xqd5AF6g']
   for i in range(density):
     
     for j in range(density):
@@ -59,6 +58,9 @@ def extract(start, end, zoom, density):# -> pd.DataFrame:
           data['long'].append(coord['longitude'])
           data['current_speed'].append(coords['currentSpeed'])
           data['free_speed'].append(coords['freeFlowSpeed'])
+
+          #these commented lines are used for live data calculations that are done in elt for the historical data
+  
           #data['speed_ratio'].append(coords['currentSpeed']/coords['freeFlowSpeed'])
           #data['normalized_speed'].append(coords['currentSpeed'])
 
@@ -77,11 +79,11 @@ def extract(start, end, zoom, density):# -> pd.DataFrame:
 @task
 def load_data(cursor, data : pd.DataFrame, table):
   sql_query = f'CREATE TABLE IF NOT EXISTS {table}(date TIMESTAMP_NTZ, lat FLOAT, long FLOAT, current_speed FLOAT, free_speed FLOAT);'#, speed_ratio FLOAT, normalized_speed FLOAT);'
-  #sql_query = f'CREATE TABLE IF NOT EXISTS {table}(date TIMESTAMP_NTZ, lat FLOAT, long FLOAT, current_speed FLOAT, free_speed FLOAT, speed_ratio FLOAT);'
-  cursor.execute(sql_query)
+  #alternate query for live table
+  #sql_query = f'CREATE OR REPLACE TABLE {table}(date TIMESTAMP_NTZ, lat FLOAT, long FLOAT, current_speed FLOAT, free_speed FLOAT);'#, speed_ratio FLOAT, normalized_speed FLOAT);'
+    cursor.execute(sql_query)
 
   for index, row in data.iterrows():
-    #insert_sql = f"INSERT INTO {table}(date, lat, long, current_speed, free_speed, speed_ratio, normalized_speed) VALUES(TO_TIMESTAMP_NTZ('{row['datetime']}'), {row['lat']}, {row['long']}, {row['current_speed']}, {row['free_speed']}, {row['speed_ratio']}, {row['normalized_speed']});"
     insert_sql = f"INSERT INTO {table}(date, lat, long, current_speed, free_speed) VALUES(TO_TIMESTAMP_NTZ('{row['datetime']}'), {row['lat']}, {row['long']}, {row['current_speed']}, {row['free_speed']});"
     cursor.execute(insert_sql)
 
@@ -91,6 +93,7 @@ with DAG(
     start_date = datetime(2024,9,21),
     catchup=False,
     tags=['ETL'], 
+    #schedule = '0 0 1 1 *' #this is an alternate shedule, intended to prevent it form regularly running, but allow us to manualy trigger it
     schedule = '00,15,30,45 7-18 * * *'#this should run every 15 minutes between 7 am and 7 pm, I have 5 api keys that work I had to adjust the hours to UTC
 ) as dag:
     
